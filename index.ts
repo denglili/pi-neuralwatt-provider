@@ -836,7 +836,7 @@ function formatEnergyCompact(joules: number): string {
   if (joules < 3.6) {
     return `${joules.toFixed(2)}J`;
   }
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) {
     return `${mwh.toFixed(2)}mWh`;
   }
@@ -1435,7 +1435,7 @@ function formatEnergy(joules: number): string {
   if (joules < 3.6) {
     return `${joules.toFixed(2)} J`;
   }
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) {
     return `${mwh.toFixed(2)} mWh`;
   }
