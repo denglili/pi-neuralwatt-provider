@@ -46,6 +46,7 @@ _Kimi, GLM, Qwen, DeepSeek — with real-time ⚡ energy/cost per session for [p
 | Kimi K2.6 Long (Virtual Context) | 1.0M | ✅ | ✅ | $0.69 | $3.22 |
 | Kimi K2.7 Code | 262K | ✅ | ✅ | $0.95 | $4.00 |
 | Kimi K2.7 Code (flex) | 262K | ✅ | ✅ | $0.95 | $4.00 |
+| Kimi K3 | 1.0M | ✅ | ✅ | $3.00 | $15.00 |
 | Qwen3.5 397B | 262K | ❌ | ✅ | $0.69 | $4.14 |
 | Qwen3.5 397B Fast | 262K | ❌ | ❌ | $0.69 | $4.14 |
 | Qwen3.6 35B | 131K | ✅ | ✅ | $0.29 | $1.15 |
@@ -53,7 +54,6 @@ _Kimi, GLM, Qwen, DeepSeek — with real-time ⚡ energy/cost per session for [p
 | GLM-5 Long (MCR 1M) | 1.0M | ❌ | ✅ | $1.10 | $3.60 |
 | GLM-5.1 Fast Long (MCR 1M) | 1.0M | ❌ | ❌ | $1.10 | $3.60 |
 | Kimi K2.5 Long (MCR 1M) | 1.0M | ✅ | ✅ | $0.52 | $2.59 |
-| Kimi K3 | 1.0M | ✅ | ✅ | $3.00 | $15.00 |
 
 ## Authentication
 
