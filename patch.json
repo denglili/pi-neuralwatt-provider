@@ -85,6 +85,26 @@
       }
     }
   },
+  "kimi-k3": {
+    "contextWindow": 1048576,
+    "maxTokens": 1048576,
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": null,
+      "high": "high",
+      "xhigh": null,
+      "max": "max"
+    },
+    "compat": {
+      "supportsReasoningEffort": true,
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true,
+      "chatTemplateKwargs": {
+        "preserve_thinking": true
+      }
+    }
+  },
   "qwen3.5-397b-fast": {
     "compat": {
       "maxTokensField": "max_tokens"
