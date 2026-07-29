@@ -116,7 +116,7 @@ describe("GLM-5.2 family patch.json thinkingLevelMap", () => {
     max: "max",
   };
 
-  for (const id of ["glm-5.2", "glm-5.2-short"]) {
+  for (const id of ["glm-5.2", "glm-5.2-flex", "glm-5.2-short", "glm-5.2-short-flex"]) {
     it(`${id} maps onto GLM-5.2's three real states (skip / high / max)`, () => {
       expect(patches[id]?.thinkingLevelMap).toEqual(expectedMap);
     });
@@ -288,7 +288,7 @@ describe("patch.json chatTemplateKwargs enablement (behavioral E2E-verified)", (
   // (NOT in the docs' full-history table, which lists clear_thinking only for
   // GLM-5.1; but behavioral E2E proved it functional on GLM-5.2: 1/4 → 4/4 recall,
   // confirmed family-wide on base/short). Non-reasoning -fast variants excluded.
-  const glm = ["glm-5.2", "glm-5.2-short"];
+  const glm = ["glm-5.2", "glm-5.2-flex", "glm-5.2-short", "glm-5.2-short-flex"];
   for (const id of glm) {
     it(`${id} opts into full-history via clear_thinking: false`, () => {
       expect(patches[id]?.compat?.chatTemplateKwargs).toEqual({ clear_thinking: false });
