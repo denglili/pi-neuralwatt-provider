@@ -1,1 +1,42 @@
-{}
+{
+  "qwen3.5-397b": {
+    "id": "qwen3.5-397b",
+    "name": "Qwen3.5 397B",
+    "reasoning": true,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.69,
+      "output": 4.14,
+      "cacheRead": 0.1725,
+      "cacheWrite": 0
+    },
+    "contextWindow": 262128,
+    "maxTokens": 262128,
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "deprecatedAt": "2026-07-30T02:00:17.574Z"
+  },
+  "qwen3.5-397b-fast": {
+    "id": "qwen3.5-397b-fast",
+    "name": "Qwen3.5 397B Fast",
+    "reasoning": false,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.69,
+      "output": 4.14,
+      "cacheRead": 0.1725,
+      "cacheWrite": 0
+    },
+    "contextWindow": 262128,
+    "maxTokens": 262128,
+    "compat": {
+      "supportsDeveloperRole": false
+    },
+    "deprecatedAt": "2026-07-30T02:00:17.574Z"
+  }
+}
