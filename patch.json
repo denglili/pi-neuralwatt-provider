@@ -1,5 +1,12 @@
 {
   "deepseek-v4-flash": {
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": "high",
+      "high": "high",
+      "max": "max"
+    },
     "compat": {
       "requiresReasoningContentOnAssistantMessages": true
     }
