@@ -80,5 +80,25 @@
     "vision": {
       "maxImagesPerRequest": 20
     }
+  },
+  {
+    "id": "deepseek-v4-flash-0731-canary",
+    "name": "DeepSeek V4 Flash 0731 (Canary)",
+    "reasoning": true,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.104,
+      "output": 0.207,
+      "cacheRead": 0.026,
+      "cacheWrite": 0
+    },
+    "contextWindow": 1048560,
+    "maxTokens": 65536,
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
+    }
   }
 ]
