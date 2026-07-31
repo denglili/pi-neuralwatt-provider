@@ -98,7 +98,8 @@
     "maxTokens": 65536,
     "compat": {
       "supportsDeveloperRole": false,
-      "supportsReasoningEffort": true
+      "supportsReasoningEffort": true,
+      "requiresReasoningContentOnAssistantMessages": true
     }
   }
 ]

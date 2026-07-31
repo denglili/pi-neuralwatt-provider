@@ -1,4 +1,9 @@
 {
+  "deepseek-v4-flash": {
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true
+    }
+  },
   "glm-5.2": {
     "thinkingLevelMap": {
       "off": "minimal",
