@@ -31,7 +31,6 @@ _Kimi, GLM, Qwen, DeepSeek — with real-time ⚡ energy/cost per session for [p
 
 | Model | Context | Vision | Reasoning | Input $/M | Output $/M |
 |-------|---------|--------|-----------|-----------|------------|
-| DeepSeek V4 Flash | 1.0M | ❌ | ✅ | $0.10 | $0.21 |
 | Gemma 4 31B | 262K | ✅ | ❌ | $0.14 | $0.42 |
 | GLM-5.2 | 1.0M | ❌ | ✅ | $1.45 | $4.50 |
 | GLM-5.2 (fast) | 1.0M | ❌ | ❌ | $1.45 | $4.50 |
@@ -48,6 +47,8 @@ _Kimi, GLM, Qwen, DeepSeek — with real-time ⚡ energy/cost per session for [p
 | Kimi K2.7 Code (flex) | 262K | ✅ | ✅ | $0.95 | $4.00 |
 | Kimi K2.7 Code Fast | 262K | ✅ | ❌ | $0.95 | $4.00 |
 | Kimi K3 | 1.0M | ✅ | ✅ | $3.00 | $15.00 |
+| Qwen3.5 397B | 262K | ❌ | ✅ | $0.69 | $4.14 |
+| Qwen3.5 397B Fast | 262K | ❌ | ❌ | $0.69 | $4.14 |
 | Qwen3.6 35B | 131K | ✅ | ✅ | $0.29 | $1.15 |
 | Qwen3.6 35B Fast | 131K | ✅ | ❌ | $0.29 | $1.15 |
 | GLM-5 Long (MCR 1M) | 1.0M | ❌ | ✅ | $1.10 | $3.60 |

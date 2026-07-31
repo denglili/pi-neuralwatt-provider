@@ -1,17 +1,4 @@
 {
-  "deepseek-v4-flash": {
-    "thinkingLevelMap": {
-      "minimal": null,
-      "low": null,
-      "medium": null,
-      "high": "high",
-      "max": "max"
-    },
-    "compat": {
-      "maxTokensField": "max_tokens",
-      "requiresReasoningContentOnAssistantMessages": true
-    }
-  },
   "glm-5.2": {
     "thinkingLevelMap": {
       "off": "minimal",

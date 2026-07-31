@@ -1,42 +1,23 @@
 {
-  "qwen3.5-397b": {
-    "id": "qwen3.5-397b",
-    "name": "Qwen3.5 397B",
+  "deepseek-v4-flash": {
+    "id": "deepseek-v4-flash",
+    "name": "DeepSeek V4 Flash",
     "reasoning": true,
     "input": [
       "text"
     ],
     "cost": {
-      "input": 0.69,
-      "output": 4.14,
-      "cacheRead": 0.1725,
+      "input": 0.104,
+      "output": 0.207,
+      "cacheRead": 0.026,
       "cacheWrite": 0
     },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
+    "contextWindow": 1048560,
+    "maxTokens": 65536,
     "compat": {
-      "supportsDeveloperRole": false
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
     },
-    "deprecatedAt": "2026-07-30T02:00:17.574Z"
-  },
-  "qwen3.5-397b-fast": {
-    "id": "qwen3.5-397b-fast",
-    "name": "Qwen3.5 397B Fast",
-    "reasoning": false,
-    "input": [
-      "text"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 4.14,
-      "cacheRead": 0.1725,
-      "cacheWrite": 0
-    },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
-    "compat": {
-      "supportsDeveloperRole": false
-    },
-    "deprecatedAt": "2026-07-30T02:00:17.574Z"
+    "deprecatedAt": "2026-07-31T02:00:20.050Z"
   }
 }
