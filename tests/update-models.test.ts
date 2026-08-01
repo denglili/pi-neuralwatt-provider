@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { cleanStalePatchEntries, updateDeprecatedModels } from "../scripts/update-models.js";
+import { cleanStalePatchEntries, updateDeprecatedModels, extractCustomPatchOverrides, mergePatchEntries } from "../scripts/update-models.js";
 
 // The sync script must keep a patch.json entry alive for exactly as long as
 // its model: entries for upstream models, custom (hidden) models, AND models
@@ -119,5 +119,72 @@ describe("update-models.js patch/graveyard lifetime", () => {
     patch = cleanStalePatchEntries(patch, new Set(), new Set(), new Set(Object.keys(deprecated)), patchPath);
     expect(patch["doomed-model"]).toBeUndefined();
     expect(JSON.parse(fs.readFileSync(patchPath, "utf8"))).toEqual({});
+  });
+});
+
+describe("update-models.js custom-model promotion", () => {
+  it("migrates bespoke overrides to patch.json when a custom model graduates upstream", () => {
+    // A custom entry: reasoning palette + a compat flag the API does not express.
+    const customModel = {
+      id: "deepseek-v4-flash-0731-canary",
+      name: "DeepSeek V4 Flash 0731 (Canary)",
+      reasoning: true,
+      cost: { input: 0.104, output: 0.207, cacheRead: 0.026, cacheWrite: 0 },
+      thinkingLevelMap: { minimal: null, low: "low", medium: "high", high: "high", max: "max" },
+      compat: {
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: true,
+        requiresReasoningContentOnAssistantMessages: true,
+      },
+    };
+
+    // Upstream now serves it, with owned pricing + a compat subset it expresses.
+    const upstreamModel = {
+      id: "deepseek-v4-flash-0731-canary",
+      name: "DeepSeek V4 Flash (0731 Canary)",
+      reasoning: true,
+      cost: { input: 0.14, output: 0.28, cacheRead: 0.035, cacheWrite: 0 },
+      compat: { supportsDeveloperRole: false, supportsReasoningEffort: true },
+    };
+
+    const override = extractCustomPatchOverrides(customModel, upstreamModel);
+
+    // pricing is upstream-owned → NOT migrated; the API-absent compat flag +
+    // thinkingLevelMap (never in the API) → migrated.
+    expect(override).toEqual({
+      thinkingLevelMap: { minimal: null, low: "low", medium: "high", high: "high", max: "max" },
+      compat: { requiresReasoningContentOnAssistantMessages: true },
+    });
+  });
+
+  it("merges into an existing patch entry without clobbering it", () => {
+    const existing = { compat: { foo: 1 } };
+    const incoming = {
+      compat: { requiresReasoningContentOnAssistantMessages: true },
+      thinkingLevelMap: { max: "max" },
+    };
+    const merged = mergePatchEntries(existing, incoming);
+    expect(merged).toEqual({
+      compat: { foo: 1, requiresReasoningContentOnAssistantMessages: true },
+      thinkingLevelMap: { max: "max" },
+    });
+  });
+
+  it("returns undefined when nothing bespoke needs migrating", () => {
+    const customModel = {
+      id: "m",
+      name: "M",
+      reasoning: true,
+      cost: { input: 0.1, output: 0.2, cacheRead: 0, cacheWrite: 0 },
+      compat: { supportsDeveloperRole: false },
+    };
+    const upstreamModel = {
+      id: "m",
+      name: "M",
+      reasoning: true,
+      cost: { input: 0.1, output: 0.2, cacheRead: 0, cacheWrite: 0 },
+      compat: { supportsDeveloperRole: false },
+    };
+    expect(extractCustomPatchOverrides(customModel, upstreamModel)).toBeUndefined();
   });
 });

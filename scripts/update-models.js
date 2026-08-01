@@ -166,6 +166,65 @@ function applyPatchToModel(model, overrides) {
   return result;
 }
 
+/**
+ * Extract the bespoke overrides from a custom model that has just graduated
+ * into the upstream API, so they can be migrated to patch.json (the sync-safe
+ * home for per-model overrides) instead of being silently dropped by the
+ * duplicate cleanup below.
+ *
+ * The upstream API is authoritative for pricing, limits, and the compat flags
+ * it directly exposes (developer_role, reasoning_effort). Only fields the API
+ * does NOT express (or expresses differently) are migrated:
+ *  - thinkingLevelMap: never in the API, always migrated.
+ *  - compat: flags absent from, or differing vs, the upstream compat model.
+ *  - vision: limits the API doesn't already provide.
+ *
+ * Returns the patch entry to merge, or undefined if nothing needs migrating.
+ */
+function extractCustomPatchOverrides(customModel, upstreamModel) {
+  const overrides = {};
+
+  if (customModel.thinkingLevelMap && Object.keys(customModel.thinkingLevelMap).length > 0) {
+    overrides.thinkingLevelMap = customModel.thinkingLevelMap;
+  }
+
+  const upCompat = upstreamModel?.compat ?? {};
+  const compatOverrides = {};
+  for (const [key, value] of Object.entries(customModel.compat ?? {})) {
+    if (!(key in upCompat) || upCompat[key] !== value) {
+      compatOverrides[key] = value;
+    }
+  }
+  if (Object.keys(compatOverrides).length > 0) {
+    overrides.compat = compatOverrides;
+  }
+
+  if (customModel.vision && JSON.stringify(customModel.vision) !== JSON.stringify(upstreamModel?.vision)) {
+    overrides.vision = customModel.vision;
+  }
+
+  return Object.keys(overrides).length > 0 ? overrides : undefined;
+}
+
+/**
+ * Merge a migrated override into an existing patch entry for the same model.
+ * Deep-merges nested objects (compat, vision, thinkingLevelMap); replaces
+ * scalars. Mirrors the runtime applyPatchToModel semantics.
+ */
+const MERGE_PATCH_KEYS = new Set(['compat', 'vision', 'thinkingLevelMap']);
+function mergePatchEntries(existing, incoming) {
+  if (!existing) return incoming;
+  const result = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (MERGE_PATCH_KEYS.has(key) && typeof value === 'object' && value !== null && typeof result[key] === 'object') {
+      result[key] = { ...result[key], ...value };
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 function buildModels(baseModels, customModels, patchData) {
   const modelMap = new Map();
   for (const model of baseModels) {
@@ -444,12 +503,23 @@ async function main() {
     const duplicates = customModels.filter(m => upstreamIds.has(m.id));
     if (duplicates.length > 0) {
       console.log(`\nFound ${duplicates.length} custom model(s) now available upstream:`);
+      const upstreamById = new Map(transformedModels.map(m => [m.id, m]));
+      let migratedCount = 0;
       for (const dup of duplicates) {
         console.log(`  - ${dup.id} (${dup.name})`);
+        const override = extractCustomPatchOverrides(dup, upstreamById.get(dup.id));
+        if (override) {
+          patch[dup.id] = mergePatchEntries(patch[dup.id], override);
+          migratedCount++;
+          console.log(`    → migrated overrides to patch.json: ${JSON.stringify(override)}`);
+        }
       }
       customModels = customModels.filter(m => !upstreamIds.has(m.id));
       fs.writeFileSync(CUSTOM_MODELS_JSON_PATH, JSON.stringify(customModels, null, 2) + '\n');
-      console.log(`✓ Removed ${duplicates.length} duplicate(s) from custom-models.json`);
+      fs.writeFileSync(PATCH_PATH, JSON.stringify(patch, null, 2) + '\n');
+      console.log(
+        `✓ Removed ${duplicates.length} duplicate(s) from custom-models.json (${migratedCount} migrated to patch.json)`,
+      );
     }
 
     // Build merged list: base → patch → custom (custom takes precedence on overlap)
@@ -509,4 +579,4 @@ if (invokedDirectly) {
   main();
 }
 
-export { cleanStalePatchEntries, updateDeprecatedModels };
+export { cleanStalePatchEntries, updateDeprecatedModels, extractCustomPatchOverrides, mergePatchEntries };

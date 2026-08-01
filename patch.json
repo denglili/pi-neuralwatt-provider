@@ -11,6 +11,19 @@
       "requiresReasoningContentOnAssistantMessages": true
     }
   },
+  "deepseek-v4-flash-0731-canary": {
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": "high",
+      "high": "high",
+      "max": "max"
+    },
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true,
+      "supportsReasoningEffort": true
+    }
+  },
   "glm-5.2": {
     "thinkingLevelMap": {
       "off": "minimal",
