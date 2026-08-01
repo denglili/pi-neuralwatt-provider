@@ -22,7 +22,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -249,17 +249,23 @@ function cleanModelForJson(model) {
 
 /**
  * Clean stale entries from patch.json where the model no longer exists in the
- * upstream API AND is not a custom (hidden) model. Patch entries for custom
- * models are legitimate overrides for models absent from the API, so they
- * must survive syncs.
+ * upstream API AND is not a custom (hidden) model AND is not sitting in the
+ * deprecated-models.json graveyard. Patch entries for custom models are
+ * legitimate overrides for models absent from the API, so they must survive
+ * syncs. Patch entries for graveyard models must survive too: the runtime
+ * keeps serving those models (patch included) for the whole grace period, and
+ * a model resurrected upstream should come back with its overrides intact.
+ * A patch entry becomes stale exactly when its model does — at eviction.
  *
  * Returns the cleaned patch object.
  */
-function cleanStalePatchEntries(patch, upstreamIds, customIds) {
-  const stale = Object.keys(patch).filter(id => !upstreamIds.has(id) && !customIds.has(id));
+function cleanStalePatchEntries(patch, upstreamIds, customIds, deprecatedIds, patchPath = PATCH_PATH) {
+  const stale = Object.keys(patch).filter(
+    id => !upstreamIds.has(id) && !customIds.has(id) && !deprecatedIds.has(id)
+  );
   if (stale.length === 0) return patch;
 
-  console.log(`\nStale patch entries (model no longer in API or custom-models.json):`);
+  console.log(`\nStale patch entries (model no longer in API, custom-models.json, or the deprecation grace period):`);
   for (const id of stale) {
     console.log(`  - ${id}`);
   }
@@ -268,7 +274,7 @@ function cleanStalePatchEntries(patch, upstreamIds, customIds) {
   for (const id of stale) {
     delete cleaned[id];
   }
-  fs.writeFileSync(PATCH_PATH, JSON.stringify(cleaned, null, 2) + '\n');
+  fs.writeFileSync(patchPath, JSON.stringify(cleaned, null, 2) + '\n');
   console.log(`✓ Removed ${stale.length} stale entry/entries from patch.json`);
   return cleaned;
 }
@@ -289,6 +295,9 @@ const DEPRECATED_MODEL_TTL_MS = 14 * 24 * 60 * 60 * 1000;
  * - back in the API: resurrected (dropped from the deprecated file)
  * - deprecatedAt older than 14 days: evicted permanently
  * Must run BEFORE the new models.json is written; it reads the old file itself.
+ * Returns the reconciled graveyard map (post add/resurrect/evict) — main()
+ * feeds its ids to cleanStalePatchEntries so a patch entry lives exactly as
+ * long as its model's grace period, dying in the same run that evicts it.
  */
 function updateDeprecatedModels(modelsJsonPath, newModels) {
   const deprecatedPath = path.join(path.dirname(modelsJsonPath), 'deprecated-models.json');
@@ -335,6 +344,7 @@ function updateDeprecatedModels(modelsJsonPath, newModels) {
     fs.writeFileSync(deprecatedPath, JSON.stringify(deprecated, null, 2) + '\n');
     console.log('Updated deprecated-models.json ' + JSON.stringify({ added, resurrected, evicted }));
   }
+  return deprecated;
 }
 
 async function main() {
@@ -392,12 +402,22 @@ async function main() {
       console.log('No custom-models.json found, skipping custom models');
     }
 
-    // Clean stale entries from patch.json. A patch entry is stale only if its
-    // model is neither in the upstream API nor in custom-models.json (hidden
-    // models legitimately have patches despite being absent from the API).
+    // Reconcile the deprecated-models.json graveyard BEFORE cleaning patch
+    // entries: a patch entry is stale only when its model is gone from the
+    // upstream API, from custom-models.json, AND from the deprecation grace
+    // period. updateDeprecatedModels must run before the new models.json is
+    // written (it reads the old file itself); running it here also means a
+    // newly delisted model's patch entry survives this very sync.
+    const cleanModels = transformedModels.map(cleanModelForJson);
+    const deprecated = updateDeprecatedModels(MODELS_JSON_PATH, cleanModels);
+    const deprecatedIds = new Set(Object.keys(deprecated));
+
+    // Clean stale entries from patch.json (hidden models legitimately have
+    // patches despite being absent from the API; grace-period models keep
+    // theirs until eviction).
     const upstreamIds = new Set(transformedModels.map(m => m.id));
     const customIds = new Set(customModels.map(m => m.id));
-    patch = cleanStalePatchEntries(patch, upstreamIds, customIds);
+    patch = cleanStalePatchEntries(patch, upstreamIds, customIds, deprecatedIds);
 
     // Log models that still have patch overrides (should be minimal now)
     const remainingPatchCount = Object.keys(patch).length;
@@ -411,9 +431,6 @@ async function main() {
     }
 
     // Write models.json (now includes pricing, compat, vision from API)
-    const cleanModels = transformedModels.map(cleanModelForJson);
-    // Move delisted models to deprecated-models.json BEFORE models.json is overwritten
-    updateDeprecatedModels(MODELS_JSON_PATH, cleanModels);
     fs.writeFileSync(MODELS_JSON_PATH, JSON.stringify(cleanModels, null, 2) + '\n');
     console.log('✓ Updated models.json (from API metadata)');
 
@@ -484,4 +501,12 @@ async function main() {
   }
 }
 
-main();
+// Run only when invoked directly (node scripts/update-models.js). Tests import
+// the helpers below and must not trigger network I/O or file rewrites.
+const invokedDirectly =
+  process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (invokedDirectly) {
+  main();
+}
+
+export { cleanStalePatchEntries, updateDeprecatedModels };

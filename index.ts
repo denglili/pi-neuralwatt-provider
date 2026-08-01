@@ -11,9 +11,11 @@
  * Model resolution strategy: Stale-While-Revalidate
  *   1. Serve stale immediately: disk cache → embedded models.json (zero-latency)
  *   2. Revalidate in background: live API /models → merge with embedded → cache → hot-swap
- *   3. patch.json + custom-models.json applied on top of whichever source won
+ *   3. Grace-period models from deprecated-models.json seeded into the base list
+ *      (served until update-models.js evicts them, 14 days after delisting)
+ *   4. patch.json + custom-models.json applied on top of whichever source won
  *
- * Merge order: [live|cache|embedded] → apply patch.json → merge custom-models.json → transform
+ * Merge order: [live|cache|embedded|deprecated-graveyard] → apply patch.json → merge custom-models.json → transform
  *
  * Usage:
  *   # Option 1: Store in auth.json (recommended)
@@ -273,16 +275,20 @@ function applyModelOverride(model: NeuralwattModel, override: ModelOverride): Ne
   return result;
 }
 
-/** Full pipeline: base → patch → custom → user modelOverrides → result */
-function buildModels(
+/** Full pipeline: base(+graveyard) → patch → custom → user modelOverrides → result */
+export function buildModels(
   base: NeuralwattModel[],
   custom: NeuralwattModel[],
   patchList: Record<string, any>,
   overrides: Record<string, ModelOverride> = {},
+  deprecated: DeprecatedModelMap = embeddedDeprecated,
 ): NeuralwattModel[] {
   const modelMap = new Map<string, NeuralwattModel>();
 
-  for (const model of base) {
+  // Seed with the base list plus grace-period deprecated models so patch.json
+  // entries and user modelOverrides reach deprecated models exactly as they
+  // did while the model was live (withDeprecated keeps live data on conflicts).
+  for (const model of withDeprecated(base, deprecated)) {
     modelMap.set(model.id, model);
   }
 
@@ -318,7 +324,7 @@ function buildModels(
     }
   }
 
-  return withDeprecated(Array.from(modelMap.values())).map((model) => {
+  return Array.from(modelMap.values()).map((model) => {
     const result: any = {
       id: model.id,
       name: model.name,
@@ -482,13 +488,20 @@ function mergeWithEmbedded(liveModels: NeuralwattModel[], embeddedModels: Neural
 // deprecated-models.json (stamped with deprecatedAt) instead of dropping it.
 // For 14 days the model keeps working here so in-flight sessions and saved
 // model settings do not break; afterwards it is evicted permanently.
+// patch.json entries follow the same lifetime: the sync script only cleans a
+// patch entry once the model is evicted from this graveyard, and buildModels
+// applies patch entries + user modelOverrides to grace-period models exactly
+// as it does to live ones.
 const DEPRECATED_MODEL_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
+type DeprecatedModelMap = Record<string, NeuralwattModel & { deprecatedAt?: string }>;
+const embeddedDeprecated = deprecatedData as DeprecatedModelMap;
+
 // Grace-period deprecated models with deprecation metadata stripped.
-function activeDeprecatedModels(): NeuralwattModel[] {
+function activeDeprecatedModels(deprecated: DeprecatedModelMap = embeddedDeprecated): NeuralwattModel[] {
   const now = Date.now();
   const result: NeuralwattModel[] = [];
-  for (const entry of Object.values(deprecatedData as Record<string, NeuralwattModel & { deprecatedAt?: string }>)) {
+  for (const entry of Object.values(deprecated)) {
     if (!entry?.id) continue;
     const removedAt = Date.parse(entry.deprecatedAt ?? "");
     if (Number.isNaN(removedAt) || now - removedAt > DEPRECATED_MODEL_TTL_MS) continue;
@@ -499,10 +512,13 @@ function activeDeprecatedModels(): NeuralwattModel[] {
   return result;
 }
 
-// Append grace-period deprecated models the list does not already have (live data wins).
-function withDeprecated(models: NeuralwattModel[]): NeuralwattModel[] {
+// Append grace-period deprecated models the list does not already have
+// (live data wins). buildModels calls this when SEEDING the model map — before
+// the patch/custom/override stages — so deprecated models receive patch.json
+// entries and user modelOverrides just like live models do.
+function withDeprecated(models: NeuralwattModel[], deprecated: DeprecatedModelMap = embeddedDeprecated): NeuralwattModel[] {
   const seen = new Set(models.map((m) => m.id));
-  const extras = activeDeprecatedModels().filter((m) => !seen.has(m.id));
+  const extras = activeDeprecatedModels(deprecated).filter((m) => !seen.has(m.id));
   return extras.length > 0 ? [...models, ...extras] : models;
 }
 
