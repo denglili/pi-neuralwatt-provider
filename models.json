@@ -1,5 +1,65 @@
 [
   {
+    "id": "deepseek-v4-flash",
+    "name": "DeepSeek V4 Flash",
+    "reasoning": true,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.14,
+      "output": 0.28,
+      "cacheRead": 0.035,
+      "cacheWrite": 0
+    },
+    "contextWindow": 1048560,
+    "maxTokens": 65536,
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
+    }
+  },
+  {
+    "id": "deepseek-v4-flash-0731-canary",
+    "name": "DeepSeek V4 Flash (0731 Canary)",
+    "reasoning": true,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.14,
+      "output": 0.28,
+      "cacheRead": 0.035,
+      "cacheWrite": 0
+    },
+    "contextWindow": 1048560,
+    "maxTokens": 65536,
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
+    }
+  },
+  {
+    "id": "deepseek-ai/DeepSeek-V4-Flash",
+    "name": "DeepSeek V4 Flash 0731 (Canary)",
+    "reasoning": true,
+    "input": [
+      "text"
+    ],
+    "cost": {
+      "input": 0.14,
+      "output": 0.28,
+      "cacheRead": 0.035,
+      "cacheWrite": 0
+    },
+    "contextWindow": 1048560,
+    "maxTokens": 65536,
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
+    }
+  },
+  {
     "id": "gemma-4-31b",
     "name": "Gemma 4 31B",
     "reasoning": false,
