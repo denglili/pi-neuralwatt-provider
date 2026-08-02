@@ -113,6 +113,7 @@ describe("GLM-5.2 family patch.json thinkingLevelMap", () => {
     low: null,
     medium: null,
     high: "high",
+    xhigh: null,
     max: "max",
   };
 
@@ -137,6 +138,7 @@ describe("Kimi K2.7 family patch.json thinkingLevelMap", () => {
     low: "low",
     medium: "medium",
     high: "high",
+    xhigh: null,
     max: "high",
   };
 
@@ -295,11 +297,12 @@ describe("patch.json chatTemplateKwargs enablement (behavioral E2E-verified)", (
     });
   }
 
-  // Models with no full-history kwarg: non-reasoning -fast variants (nothing to
-  // preserve) and Qwen (chat template exposes no flag).
+  // Models with no provider-specific full-history kwarg: non-reasoning -fast
+  // variants (nothing to preserve) and Qwen (pi-ai's qwen-chat-template format
+  // already injects its own preserve_thinking switch).
   const none = ["kimi-k2.6-fast", "glm-5.2-fast", "qwen3.5-397b-fast", "qwen3.6-35b-fast"];
   for (const id of none) {
-    it(`${id} sets NO chatTemplateKwargs (non-reasoning / not exposed)`, () => {
+    it(`${id} sets NO provider-specific chatTemplateKwargs`, () => {
       expect(patches[id]?.compat?.chatTemplateKwargs).toBeUndefined();
     });
   }

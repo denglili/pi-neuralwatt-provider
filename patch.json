@@ -1,10 +1,12 @@
 {
   "deepseek-v4-flash": {
     "thinkingLevelMap": {
+      "off": "none",
       "minimal": null,
       "low": "low",
       "medium": "high",
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -13,10 +15,12 @@
   },
   "deepseek-v4-flash-0731-canary": {
     "thinkingLevelMap": {
+      "off": "none",
       "minimal": null,
       "low": "low",
       "medium": "high",
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -24,13 +28,47 @@
       "supportsReasoningEffort": true
     }
   },
+  "deepseek-ai/DeepSeek-V4-Flash": {
+    "thinkingLevelMap": {
+      "off": "none",
+      "minimal": null,
+      "low": "low",
+      "medium": "high",
+      "high": "high",
+      "xhigh": null,
+      "max": "max"
+    },
+    "compat": {
+      "requiresReasoningContentOnAssistantMessages": true,
+      "supportsReasoningEffort": true
+    }
+  },
+  "gemma-4-31b": {
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "off": "none",
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": "high",
+      "xhigh": null,
+      "max": null
+    },
+    "compat": {
+      "thinkingFormat": "qwen-chat-template",
+      "supportsReasoningEffort": false,
+      "maxTokensField": "max_tokens"
+    }
+  },
   "glm-5.2": {
+    "maxTokens": 131072,
     "thinkingLevelMap": {
       "off": "minimal",
       "minimal": null,
       "low": null,
       "medium": null,
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -40,17 +78,20 @@
     }
   },
   "glm-5.2-fast": {
+    "maxTokens": 131072,
     "compat": {
       "maxTokensField": "max_tokens"
     }
   },
   "glm-5.2-flex": {
+    "maxTokens": 131072,
     "thinkingLevelMap": {
       "off": "minimal",
       "minimal": null,
       "low": null,
       "medium": null,
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -66,6 +107,7 @@
       "low": null,
       "medium": null,
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -81,6 +123,7 @@
       "low": null,
       "medium": null,
       "high": "high",
+      "xhigh": null,
       "max": "max"
     },
     "compat": {
@@ -89,7 +132,34 @@
       }
     }
   },
+  "glm-5.2-short-fast": {
+    "compat": {
+      "maxTokensField": "max_tokens"
+    }
+  },
+  "glm-5.2-short-fast-flex": {
+    "compat": {
+      "maxTokensField": "max_tokens"
+    }
+  },
   "kimi-k2.6": {
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": null,
+      "max": null
+    },
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true,
+      "chatTemplateKwargs": {
+        "preserve_thinking": true
+      }
+    }
+  },
+  "kimi-k2.6-flex": {
     "thinkingLevelMap": {
       "minimal": null,
       "low": "low",
@@ -111,12 +181,30 @@
       "maxTokensField": "max_tokens"
     }
   },
+  "neuralwatt/kimi-k2.6-long": {
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": null,
+      "max": null
+    },
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true,
+      "chatTemplateKwargs": {
+        "preserve_thinking": true
+      }
+    }
+  },
   "kimi-k2.7-code": {
     "thinkingLevelMap": {
       "minimal": null,
       "low": "low",
       "medium": "medium",
       "high": "high",
+      "xhigh": null,
       "max": "high"
     },
     "compat": {
@@ -127,10 +215,33 @@
       }
     }
   },
+  "kimi-k2.7-code-flex": {
+    "thinkingLevelMap": {
+      "minimal": null,
+      "low": "low",
+      "medium": "medium",
+      "high": "high",
+      "xhigh": null,
+      "max": "high"
+    },
+    "compat": {
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true,
+      "chatTemplateKwargs": {
+        "preserve_thinking": true
+      }
+    }
+  },
+  "kimi-k2.7-code-fast": {
+    "compat": {
+      "maxTokensField": "max_tokens"
+    }
+  },
   "kimi-k3": {
     "contextWindow": 1048576,
-    "maxTokens": 1048576,
+    "maxTokens": 131072,
     "thinkingLevelMap": {
+      "off": "none",
       "minimal": null,
       "low": "low",
       "medium": null,
@@ -147,7 +258,50 @@
       }
     }
   },
+  "qwen3.5-397b": {
+    "maxTokens": 65536,
+    "thinkingLevelMap": {
+      "off": "none",
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": "high",
+      "xhigh": null,
+      "max": null
+    },
+    "compat": {
+      "thinkingFormat": "qwen-chat-template",
+      "supportsReasoningEffort": false,
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true
+    }
+  },
+  "qwen3.5-397b-fast": {
+    "maxTokens": 65536,
+    "compat": {
+      "maxTokensField": "max_tokens"
+    }
+  },
+  "qwen3.6-35b": {
+    "maxTokens": 65536,
+    "thinkingLevelMap": {
+      "off": "none",
+      "minimal": null,
+      "low": null,
+      "medium": null,
+      "high": "high",
+      "xhigh": null,
+      "max": null
+    },
+    "compat": {
+      "thinkingFormat": "qwen-chat-template",
+      "supportsReasoningEffort": false,
+      "maxTokensField": "max_tokens",
+      "requiresReasoningContentOnAssistantMessages": true
+    }
+  },
   "qwen3.6-35b-fast": {
+    "maxTokens": 65536,
     "compat": {
       "maxTokensField": "max_tokens"
     }
