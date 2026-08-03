@@ -28,7 +28,18 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const AUTH_JSON_PATH = path.join(os.homedir(), '.pi', 'agent', 'auth.json');
+// pi's agent directory: PI_CODING_AGENT_DIR (with ~ expansion) or ~/.pi/agent.
+function piAgentDir() {
+  const envDir = process.env.PI_CODING_AGENT_DIR;
+  if (envDir) {
+    return envDir.startsWith('~/') || envDir === '~'
+      ? path.join(os.homedir(), envDir.slice(1))
+      : envDir;
+  }
+  return path.join(os.homedir(), '.pi', 'agent');
+}
+
+const AUTH_JSON_PATH = path.join(piAgentDir(), 'auth.json');
 
 /**
  * Resolve a configured value using pi's semantics (resolve-config-value.ts in
@@ -108,11 +119,7 @@ function resolveApiKey() {
   try {
     const auth = JSON.parse(fs.readFileSync(AUTH_JSON_PATH, 'utf8'));
     const credential = auth?.neuralwatt;
-    if (
-      credential &&
-      (credential.type === undefined || credential.type === 'api_key') &&
-      typeof credential.key === 'string'
-    ) {
+    if (credential && credential.type === 'api_key' && typeof credential.key === 'string') {
       const key = resolveConfigValue(credential.key, credential.env);
       if (key) return key;
     }
