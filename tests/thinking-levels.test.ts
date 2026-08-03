@@ -388,8 +388,8 @@ describe("catalog regression: kimi-k3 visible thinking levels", () => {
     expect(k3.thinkingLevelMap).toEqual(patchesData["kimi-k3"].thinkingLevelMap);
   });
 
-  it("kimi-k3 resolves to exactly off/low/high/max (not off+medium)", () => {
+  it("kimi-k3 resolves to exactly low/high/max (off and medium hidden)", () => {
     const k3 = catalog.find((m: any) => m.id === "kimi-k3");
-    expect(piVisibleLevels(k3)).toEqual(["off", "low", "high", "max"]);
+    expect(piVisibleLevels(k3)).toEqual(["low", "high", "max"]);
   });
 });

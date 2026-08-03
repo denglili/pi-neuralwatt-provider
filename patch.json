@@ -241,7 +241,7 @@
     "contextWindow": 1048576,
     "maxTokens": 131072,
     "thinkingLevelMap": {
-      "off": "none",
+      "off": null,
       "minimal": null,
       "low": "low",
       "medium": null,
