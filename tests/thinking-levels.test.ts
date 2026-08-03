@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { streamNeuralwatt } from "../index";
+import { buildModels, streamNeuralwatt } from "../index";
 import { __streamCalls, __resetStreamCalls, __setClamp } from "@earendil-works/pi-ai/compat";
 import patchesData from "../patch.json" with { type: "json" };
+import modelsData from "../models.json" with { type: "json" };
+import customModelsData from "../custom-models.json" with { type: "json" };
 
 // A GLM-5.2 model shaped exactly as the extension registers it (embedded
 // models.json base + patch.json thinkingLevelMap).
@@ -355,5 +357,39 @@ describe("modelOverrides (user config) applied on top of patch", () => {
   it("replace-semantics for scalar fields (e.g. reasoning)", () => {
     const out = applyModelOverride(base, { reasoning: false });
     expect(out.reasoning).toBe(false);
+  });
+});
+
+// Replays pi-ai's getSupportedThinkingLevels (dist/models.js) over the shipped
+// catalog. pi's UI hides a level iff the model's thinkingLevelMap maps it to
+// null, and xhigh/max additionally require a non-undefined mapping. Guards the
+// regression fixed by "feat: restore kimi-k3 thinking levels and compat via
+// patch override": a models sync that drops kimi-k3's map silently downgrades
+// the UI to the 5 default levels (off/minimal/low/medium/high) and loses max.
+describe("catalog regression: kimi-k3 visible thinking levels", () => {
+  const EXTENDED = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+
+  function piVisibleLevels(model: any): string[] {
+    if (!model.reasoning) return ["off"];
+    return EXTENDED.filter((level) => {
+      const mapped = model.thinkingLevelMap?.[level];
+      if (mapped === null) return false;
+      if (level === "xhigh" || level === "max") return mapped !== undefined;
+      return true;
+    });
+  }
+
+  const catalog = buildModels(modelsData as any, customModelsData as any, patchesData as any);
+
+  it("kimi-k3 ships reasoning with its thinkingLevelMap applied", () => {
+    const k3 = catalog.find((m: any) => m.id === "kimi-k3");
+    expect(k3).toBeDefined();
+    expect(k3.reasoning).toBe(true);
+    expect(k3.thinkingLevelMap).toEqual(patchesData["kimi-k3"].thinkingLevelMap);
+  });
+
+  it("kimi-k3 resolves to exactly off/low/high/max (not off+medium)", () => {
+    const k3 = catalog.find((m: any) => m.id === "kimi-k3");
+    expect(piVisibleLevels(k3)).toEqual(["off", "low", "high", "max"]);
   });
 });
