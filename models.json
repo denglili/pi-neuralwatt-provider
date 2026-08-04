@@ -9,7 +9,7 @@
     "cost": {
       "input": 0.14,
       "output": 0.28,
-      "cacheRead": 0.014,
+      "cacheRead": 0.028,
       "cacheWrite": 0
     },
     "contextWindow": 1048560,
@@ -29,7 +29,7 @@
     "cost": {
       "input": 0.14,
       "output": 0.28,
-      "cacheRead": 0.014,
+      "cacheRead": 0.028,
       "cacheWrite": 0
     },
     "contextWindow": 1048560,
@@ -49,7 +49,7 @@
     "cost": {
       "input": 0.14,
       "output": 0.28,
-      "cacheRead": 0.014,
+      "cacheRead": 0.028,
       "cacheWrite": 0
     },
     "contextWindow": 1048560,
@@ -223,98 +223,6 @@
     }
   },
   {
-    "id": "kimi-k2.6",
-    "name": "Kimi K2.6",
-    "reasoning": true,
-    "input": [
-      "text",
-      "image"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 3.22,
-      "cacheRead": 0.069,
-      "cacheWrite": 0
-    },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
-    "compat": {
-      "supportsDeveloperRole": false
-    },
-    "vision": {
-      "maxImagesPerRequest": 20
-    }
-  },
-  {
-    "id": "kimi-k2.6-flex",
-    "name": "Kimi K2.6 (flex)",
-    "reasoning": true,
-    "input": [
-      "text",
-      "image"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 3.22,
-      "cacheRead": 0.069,
-      "cacheWrite": 0
-    },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
-    "compat": {
-      "supportsDeveloperRole": false
-    },
-    "vision": {
-      "maxImagesPerRequest": 20
-    }
-  },
-  {
-    "id": "kimi-k2.6-fast",
-    "name": "Kimi K2.6 Fast",
-    "reasoning": false,
-    "input": [
-      "text",
-      "image"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 3.22,
-      "cacheRead": 0.069,
-      "cacheWrite": 0
-    },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
-    "compat": {
-      "supportsDeveloperRole": false
-    },
-    "vision": {
-      "maxImagesPerRequest": 20
-    }
-  },
-  {
-    "id": "neuralwatt/kimi-k2.6-long",
-    "name": "Kimi K2.6 Long (Virtual Context)",
-    "reasoning": true,
-    "input": [
-      "text",
-      "image"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 3.22,
-      "cacheRead": 0.069,
-      "cacheWrite": 0
-    },
-    "contextWindow": 1048560,
-    "maxTokens": 1048560,
-    "compat": {
-      "supportsDeveloperRole": false
-    },
-    "vision": {
-      "maxImagesPerRequest": 20
-    }
-  },
-  {
     "id": "kimi-k2.7-code",
     "name": "Kimi K2.7 Code",
     "reasoning": true,
@@ -400,48 +308,35 @@
     "contextWindow": 1048560,
     "maxTokens": 1048560,
     "compat": {
-      "supportsDeveloperRole": false
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
     },
     "vision": {
       "maxImagesPerRequest": 20
     }
   },
   {
-    "id": "qwen3.5-397b",
-    "name": "Qwen3.5 397B",
-    "reasoning": true,
-    "input": [
-      "text"
-    ],
-    "cost": {
-      "input": 0.69,
-      "output": 4.14,
-      "cacheRead": 0.069,
-      "cacheWrite": 0
-    },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
-    "compat": {
-      "supportsDeveloperRole": false
-    }
-  },
-  {
-    "id": "qwen3.5-397b-fast",
-    "name": "Qwen3.5 397B Fast",
+    "id": "kimi-k3-fast",
+    "name": "Kimi K3 Fast",
     "reasoning": false,
     "input": [
-      "text"
+      "text",
+      "image"
     ],
     "cost": {
-      "input": 0.69,
-      "output": 4.14,
-      "cacheRead": 0.069,
+      "input": 3,
+      "output": 15,
+      "cacheRead": 0.3,
       "cacheWrite": 0
     },
-    "contextWindow": 262128,
-    "maxTokens": 262128,
+    "contextWindow": 1048560,
+    "maxTokens": 1048560,
     "compat": {
-      "supportsDeveloperRole": false
+      "supportsDeveloperRole": false,
+      "supportsReasoningEffort": true
+    },
+    "vision": {
+      "maxImagesPerRequest": 20
     }
   },
   {
