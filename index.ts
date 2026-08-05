@@ -593,6 +593,21 @@ let pendingMcrSessionRaw: Record<string, unknown> | null = null;
 let pendingCostRaw: Record<string, unknown> | null = null;
 let teeReader: Promise<void> | undefined;
 
+function trackTeeReader(reader: Promise<void>): void {
+  const settled = reader.catch(() => {});
+  teeReader = teeReader
+    ? Promise.all([teeReader, settled]).then(() => undefined)
+    : settled;
+}
+
+async function settleTeeReaders(): Promise<void> {
+  while (teeReader) {
+    const current = teeReader;
+    await current;
+    if (teeReader === current) teeReader = undefined;
+  }
+}
+
 // Shared bridge for raw SSE comment payloads parsed from the stream tee.
 // Uses globalThis so the neuralwatt-mcr.ts extension (a separate ESM
 // module loaded by Pi) can consume the data regardless of whether Pi
@@ -658,6 +673,7 @@ export function resetSessionState() {
   pendingEnergyRaw = null;
   pendingMcrSessionRaw = null;
   pendingCostRaw = null;
+  teeReader = undefined;
   // Also clear the bridge so stale data doesn't leak across tests
   const bridge = (globalThis as any)[NW_MCR_BRIDGE];
   if (bridge) {
@@ -1584,41 +1600,32 @@ export function streamNeuralwatt(
     }
     : undefined;
 
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const response = await originalFetch(input, init);
+  // Use pi-ai's per-request fetch option instead of replacing globalThis.fetch.
+  // Concurrent main-agent and helper-model requests can finish in either order;
+  // a global save/patch/restore stack leaves a stale wrapper installed when they
+  // settle out of order. Each call now owns its interceptor and reader.
+  const upstreamFetch = streamOptions.fetch ?? globalThis.fetch;
+  const energyFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await upstreamFetch(input, init);
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-    if (response.body && url.includes("/chat/completions")) {
-      const [bodyForSdk, bodyForEnergy] = response.body.tee();
-      teeReader = readEnergyFromTee(bodyForEnergy);
-      return new Response(bodyForSdk, { headers: response.headers, status: response.status, statusText: response.statusText });
-    }
-    return response;
+    if (!response.body || !url.includes("/chat/completions")) return response;
+
+    const [bodyForSdk, bodyForEnergy] = response.body.tee();
+    trackTeeReader(readEnergyFromTee(bodyForEnergy));
+    return new Response(bodyForSdk, {
+      headers: response.headers,
+      status: response.status,
+      statusText: response.statusText,
+    });
   };
 
-  try {
-    const stream = streamOpenAICompletions(neuralwattModel, transformedContext, {
-      ...streamOptions,
-      reasoningEffort,
-      apiKey,
-      ...(onPayload ? { onPayload } : {}),
-    });
-
-    const originalEnd = stream.end.bind(stream);
-    stream.end = (result?: any) => {
-      globalThis.fetch = originalFetch;
-      if (teeReader) {
-        teeReader.catch(() => {});
-      }
-      originalEnd(result);
-    };
-
-    return stream;
-  } catch (error) {
-    globalThis.fetch = originalFetch;
-    throw error;
-  }
+  return streamOpenAICompletions(neuralwattModel, transformedContext, {
+    ...streamOptions,
+    fetch: energyFetch,
+    reasoningEffort,
+    apiKey,
+    ...(onPayload ? { onPayload } : {}),
+  });
 }
 
 // ─── Extension Entry Point ────────────────────────────────────────────────────
@@ -1647,7 +1654,6 @@ export function makeProviderConfig(models: NeuralwattModel[] = getStaleModels())
     models,
     streamSimple: streamNeuralwatt,
     headers: {
-      "X-NW-Conversation-ID": "$X_NW_CONVERSATION_ID",
       "X-NW-MCR-Ext-Version": "$X_NW_MCR_EXT_VERSION",
     },
   };
@@ -1750,15 +1756,8 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("turn_end", async (event, ctx) => {
-    // Ensure the energy tee reader has finished before committing.
-    if (teeReader) {
-      try {
-        await teeReader;
-      } catch {
-        // Tee stream may error if the main stream was aborted
-      }
-      teeReader = undefined;
-    }
+    // Ensure every concurrent response tee has finished before committing.
+    await settleTeeReaders();
 
     // Publish MCR data to the globalThis bridge so neuralwatt-mcr.ts can
     // read it regardless of ESM module instance identity.

@@ -1,8 +1,8 @@
 // Tests for the Neuralwatt MCR Pi extension wrapper.
 //
 // The wrapper delegates to Chad's upstream @neuralwatt/pi-mcr-extension with
-// two runtime patches: (1) registerProvider intercepted to strip models/api
-// and $-prefix env vars, (2) turn_end SSE bridge handler added.
+// Runtime patches include provider re-registration, request-scoped conversation
+// headers, duplicate-status suppression, and the turn_end SSE bridge drain.
 //
 // After the wrapper runs, it re-registers our full provider (with streamSimple)
 // to guarantee it wins over any load-time registerProvider from Chad's npm
@@ -55,21 +55,20 @@ function makeMockPi(): MockPi {
   };
 }
 
-function makeCtx(modelId: string) {
+function makeCtx(modelId: string, provider = "neuralwatt") {
   return {
-    model: { id: modelId },
+    model: { id: modelId, provider },
     sessionManager: { getSessionId: () => "sess-test-1234" },
     ui: { setStatus: () => {} },
   };
 }
 
-// Mirror of the SDK's resolveConfigValue for $-prefixed env-var references.
-function resolveConfigValue(value: string): string {
-  if (value.startsWith("$")) {
-    const envName = value.slice(1);
-    return process.env[envName] || envName;
+async function emitProviderHeaders(pi: MockPi, ctx: any): Promise<Record<string, string>> {
+  const event = { headers: {} as Record<string, string> };
+  for (const handler of pi.handlers.get("before_provider_headers") ?? []) {
+    await handler(event, ctx);
   }
-  return process.env[value] || value;
+  return event.headers;
 }
 
 let tmpHome: string;
@@ -139,39 +138,45 @@ describe("provider registration", () => {
     expect(Array.isArray(cfg.models)).toBe(true);
   });
 
-  it("$-prefixes apiKey and header env-var names", async () => {
+  it("keeps conversation identity out of provider-wide auth headers", async () => {
     const pi = makeMockPi();
     extDefault(pi);
 
     const cfg = pi.providers["neuralwatt"];
     expect(cfg.apiKey).toBe("$NEURALWATT_API_KEY");
-    expect(cfg.headers["X-NW-Conversation-ID"]).toBe("$X_NW_CONVERSATION_ID");
+    expect(cfg.headers["X-NW-Conversation-ID"]).toBeUndefined();
     expect(cfg.headers["X-NW-MCR-Ext-Version"]).toBe("$X_NW_MCR_EXT_VERSION");
   });
 
-  it("seeds X_NW_CONVERSATION_ID so the header resolves to a real value on the first request", async () => {
+  it("attaches the seeded conversation id only to Neuralwatt agent requests", async () => {
     const pi = makeMockPi();
     extDefault(pi);
 
-    const headerName = pi.providers["neuralwatt"].headers["X-NW-Conversation-ID"];
-    const resolved = resolveConfigValue(headerName);
-    expect(resolved).not.toBe("X_NW_CONVERSATION_ID");
-    expect(resolved.length).toBeGreaterThan(0);
+    const headers = await emitProviderHeaders(
+      pi,
+      makeCtx("neuralwatt/glm-5.1-long"),
+    );
+    expect(headers["X-NW-Conversation-ID"]).toBe(process.env.X_NW_CONVERSATION_ID);
+    expect(headers["X-NW-Conversation-ID"]).toBeTruthy();
+
+    const unrelated = await emitProviderHeaders(pi, makeCtx("other-model", "other"));
+    expect(unrelated["X-NW-Conversation-ID"]).toBeUndefined();
   });
 
-  it("upgrades the env var to Pi's stable session id on session_start", async () => {
+  it("upgrades per-request headers to Pi's stable session id on session_start", async () => {
     const pi = makeMockPi();
     extDefault(pi);
-    const headerName = pi.providers["neuralwatt"].headers["X-NW-Conversation-ID"];
-
-    const before = resolveConfigValue(headerName);
+    const before = process.env.X_NW_CONVERSATION_ID;
 
     const sessionStartHandlers = pi.handlers.get("session_start")!;
     await sessionStartHandlers[0]({}, makeCtx("neuralwatt/glm-5.1-long"));
 
-    const after = resolveConfigValue(headerName);
-    expect(after).toBe("sess-test-1234");
-    expect(after).not.toBe(before);
+    const headers = await emitProviderHeaders(
+      pi,
+      makeCtx("neuralwatt/glm-5.1-long"),
+    );
+    expect(headers["X-NW-Conversation-ID"]).toBe("sess-test-1234");
+    expect(headers["X-NW-Conversation-ID"]).not.toBe(before);
   });
 });
 

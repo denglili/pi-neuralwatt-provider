@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { buildModels, streamNeuralwatt } from "../index";
+import { buildModels, getPendingState, resetSessionState, streamNeuralwatt } from "../index";
 import { __streamCalls, __resetStreamCalls, __setClamp } from "@earendil-works/pi-ai/compat";
 import patchesData from "../patch.json" with { type: "json" };
 import modelsData from "../models.json" with { type: "json" };
@@ -36,6 +36,7 @@ describe("streamNeuralwatt thinking-level forwarding", () => {
   beforeEach(() => {
     originalFetch = globalThis.fetch;
     __resetStreamCalls();
+    resetSessionState();
     __setClamp((_m, level) => level); // identity clamp by default
   });
 
@@ -50,6 +51,59 @@ describe("streamNeuralwatt thinking-level forwarding", () => {
     expect(__streamCalls).toHaveLength(1);
     expect(__streamCalls[0].options.reasoningEffort).toBe("high");
     expect(__streamCalls[0].options.apiKey).toBe("sk-test");
+  });
+
+  it("uses independent fetch wrappers without mutating globalThis.fetch", () => {
+    const fetchBefore = globalThis.fetch;
+    const first = streamNeuralwatt(glm52, context, { apiKey: "sk-test" } as any);
+    const second = streamNeuralwatt(glm52, context, { apiKey: "sk-test" } as any);
+
+    expect(globalThis.fetch).toBe(fetchBefore);
+    expect(__streamCalls[0].options.fetch).toEqual(expect.any(Function));
+    expect(__streamCalls[1].options.fetch).toEqual(expect.any(Function));
+    expect(__streamCalls[0].options.fetch).not.toBe(__streamCalls[1].options.fetch);
+
+    // Out-of-order completion used to restore a stale global fetch wrapper.
+    first.end();
+    second.end();
+    expect(globalThis.fetch).toBe(fetchBefore);
+  });
+
+  it("chains a caller-supplied fetch inside the per-request energy wrapper", async () => {
+    const upstream = vi.fn(async () => new Response("ok"));
+    const stream = streamNeuralwatt(glm52, context, {
+      apiKey: "sk-test",
+      fetch: upstream,
+    } as any);
+
+    const wrappedFetch = __streamCalls[0].options.fetch as typeof globalThis.fetch;
+    const response = await wrappedFetch("https://api.neuralwatt.com/v1/models");
+
+    expect(await response.text()).toBe("ok");
+    expect(upstream).toHaveBeenCalledTimes(1);
+    stream.end();
+  });
+
+  it("tracks every concurrent response tee before turn accounting", async () => {
+    const upstream = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(': energy {"energy_joules":2}\n'))
+      .mockResolvedValueOnce(new Response(': energy {"energy_joules":3}\n'));
+    const first = streamNeuralwatt(glm52, context, { apiKey: "sk-test", fetch: upstream } as any);
+    const second = streamNeuralwatt(glm52, context, { apiKey: "sk-test", fetch: upstream } as any);
+    const firstFetch = __streamCalls[0].options.fetch as typeof globalThis.fetch;
+    const secondFetch = __streamCalls[1].options.fetch as typeof globalThis.fetch;
+
+    const [firstResponse, secondResponse] = await Promise.all([
+      firstFetch("https://api.neuralwatt.com/v1/chat/completions"),
+      secondFetch("https://api.neuralwatt.com/v1/chat/completions"),
+    ]);
+    await Promise.all([firstResponse.text(), secondResponse.text()]);
+    await getPendingState().teeReader;
+
+    expect(getPendingState().pendingEnergyJoules).toBe(5);
+    first.end();
+    second.end();
   });
 
   it("drops the raw reasoning field from the forwarded options", () => {

@@ -12,13 +12,17 @@ import chadFactory from "./chad-mcr-upstream";
 //      our full provider (streamSimple + SWR models + headers) to guarantee
 //      it wins regardless of whether Chad's npm package is also installed.
 //
-//   2. Prototype hacking: monkey-patch ctx.ui.setStatus to suppress Chad's
+//   2. Request-scoped conversation identity: attach X-NW-Conversation-ID in
+//      before_provider_headers so raw helper streams cannot inherit the main
+//      agent's server-side cache lineage.
+//
+//   3. Prototype hacking: monkey-patch ctx.ui.setStatus to suppress Chad's
 //      nw-mcr/nw-energy status bar writes, since index.ts now handles all
 //      display (energy + MCR inline in one widget, quota on the same line).
 //      Chad's handlers still run — updateStatusBar, in-flight ticker,
 //      context-drop, etc. — we only prevent the duplicate status bar writes.
 //
-//   3. turn_end SSE bridge drain: consumePendingMCR() empties the globalThis
+//   4. turn_end SSE bridge drain: consumePendingMCR() empties the globalThis
 //      bridge so data doesn't leak between turns. Index.ts already consumed
 //      the data for its own display; Chad reads from after_provider_response
 //      headers and message_end body (separate path).
@@ -32,6 +36,8 @@ import chadFactory from "./chad-mcr-upstream";
 // and his registerProvider already fired — our wrapper skips the duplicate factory
 // invocation but still registers the turn_end bridge handler.
 const MCR_LOADED_SENTINEL = Symbol.for("pi-neuralwatt-provider.mcr-loaded");
+const CONVERSATION_ID_ENV = "X_NW_CONVERSATION_ID";
+const CONVERSATION_ID_HEADER = "X-NW-Conversation-ID";
 
 function isMCRModel(modelId: string): boolean {
   return modelId.includes("neuralwatt/") || modelId.endsWith("-long") || modelId.endsWith("-mcr");
@@ -104,7 +110,18 @@ export default function (pi: ExtensionAPI) {
   // Idempotent when Chad isn't installed.
   pi.registerProvider("neuralwatt", makeProviderConfig());
 
-  // ── Prototype hacking: suppress Chad's setStatus writes ──────────────
+  // Conversation identity belongs to an agent request, not provider auth.
+  // Provider-level headers are also returned by getApiKeyAndHeaders() to raw
+  // helper calls such as pi-vision-handoff; attaching the main Pi session there
+  // makes an unrelated vision prompt replace the main cache lineage. Pi's
+  // request-header hook runs for main agent calls but not raw provider streams.
+  pi.on("before_provider_headers", (event, ctx) => {
+    if (ctx.model?.provider !== "neuralwatt") return;
+    const conversationId = process.env[CONVERSATION_ID_ENV];
+    if (conversationId) event.headers[CONVERSATION_ID_HEADER] = conversationId;
+  });
+
+  // Suppress Chad's duplicate status writes.
   //
   // Pi's ExtensionRunner shares one uiContext across all extensions.
   // ctx.ui is a getter that always returns runner.uiContext — the same

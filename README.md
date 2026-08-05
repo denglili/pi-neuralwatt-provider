@@ -150,7 +150,9 @@ Currently configured compat settings:
 
 ### Custom Stream Handler
 
-This extension registers a custom `streamSimple` provider (`api: "neuralwatt"`) that wraps pi-ai's built-in `streamOpenAICompletions`. A temporary `globalThis.fetch` override tees the HTTP response body so the OpenAI SDK handles all standard chunk parsing (text, thinking, tool calls, usage) while the extension reads the tee for Neuralwatt's SSE comment lines (`: energy {...}`, `: cost {...}`) that the SDK discards.
+This extension registers a custom `streamSimple` provider (`api: "neuralwatt"`) that wraps pi-ai's built-in `streamOpenAICompletions`. A per-request fetch wrapper tees the HTTP response body so the OpenAI SDK handles all standard chunk parsing (text, thinking, tool calls, usage) while the extension reads the tee for Neuralwatt's SSE comment lines (`: energy {...}`, `: cost {...}`) that the SDK discards. Per-request wrappers allow concurrent main-agent and helper-model calls to settle in any order without corrupting `globalThis.fetch`.
+
+`X-NW-Conversation-ID` is attached in Pi's `before_provider_headers` lifecycle for agent requests rather than registered as a provider-wide auth header. Raw helper streams therefore cannot accidentally inherit and replace the main agent's Neuralwatt cache lineage.
 
 ### Pi Configuration
 
