@@ -51,7 +51,7 @@ function termVisWidth(str: string): number {
 function formatEnergy(joules: number): string {
   if (joules === 0) return "0 J";
   if (joules < 3.6) return `${joules.toFixed(2)} J`;
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) return `${mwh.toFixed(2)} mWh`;
   const wh = mwh / 1000;
   if (wh < 1000) return `${wh.toFixed(2)} Wh`;
@@ -62,7 +62,7 @@ function formatEnergy(joules: number): string {
 function formatEnergyCompact(joules: number): string {
   if (joules === 0) return "0J";
   if (joules < 3.6) return `${joules.toFixed(2)}J`;
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) return `${mwh.toFixed(2)}mWh`;
   const wh = mwh / 1000;
   if (wh < 1000) return `${wh.toFixed(2)}Wh`;
@@ -110,12 +110,12 @@ function formatCarbonCompact(grams: number): string {
 
 describe("energy progressive disclosure levels", () => {
   const testCases = [
-    { joules: 2772, costUsd: 0.003829 },   // 0.77 mWh range
+    { joules: 2772, costUsd: 0.003829 },   // 770 mWh range
     { joules: 0, costUsd: 5.50 },           // no energy, only cost
-    { joules: 500, costUsd: 0 },            // only energy (J range)
-    { joules: 360000, costUsd: 0.01 },      // 100 mWh range
-    { joules: 3600000, costUsd: 1.50 },     // 1 Wh range
-    { joules: 36000000, costUsd: 99.99 },   // 10 Wh / kWh range
+    { joules: 500, costUsd: 0 },            // only energy (mWh range)
+    { joules: 360000, costUsd: 0.01 },      // 100 Wh range
+    { joules: 3600000, costUsd: 1.50 },     // 1 kWh range
+    { joules: 36000000, costUsd: 99.99 },   // 10 kWh range
   ];
 
   for (const { joules, costUsd } of testCases) {
@@ -349,7 +349,7 @@ describe("carbon progressive disclosure levels", () => {
   });
 
   it("carbon inserted between cost and MCR keeps levels monotonic", () => {
-    const core = `⚡${formatEnergy(2772)} ${formatCost(0.003829)}`; // ⚡0.77 mWh $0.003829
+    const core = `⚡${formatEnergy(2772)} ${formatCost(0.003829)}`; // ⚡770.00 mWh $0.003829
     const carbonFull = `🌱${carbonStr} CO₂`;
     const mcrFull = "MCR 3bb342a0 drop<5 APC 85% compact 45%";
     const levels = [

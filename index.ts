@@ -38,7 +38,8 @@
  *     "quota": "widget",          // "widget" | "statusbar" | "off"
  *     "mcr": "widget",            // "widget" | "statusbar" | "off"
  *     "carbon": "widget",         // "widget" | "statusbar" | "off"
- *     "hideOnOtherProvider": false  // hide display when a non-Neuralwatt model is active
+ *     "hideOnOtherProvider": false,  // hide display when a non-Neuralwatt model is active
+ *     "baseUrl": "https://api.neuralwatt.com/v1"  // optional: route all API traffic through a proxy
  *   }
  *
  *   - "widget" (default): rendered in the below-editor status line
@@ -47,6 +48,9 @@
  *   - hideOnOtherProvider: when true, auto-hide all Neuralwatt display if the
  *     active model's provider is not "neuralwatt". The display returns when you
  *     switch back to a Neuralwatt model. Default: false.
+ *   - baseUrl: override the provider API URL. Every request (chat completions,
+ *     /models sync, /quota) goes to this URL instead of the default. Useful
+ *     with a proxy such as Headroom. Default: https://api.neuralwatt.com/v1
  *   - carbon: session CO₂ (🌱, energy line) + the fleet grid/region badge
  *     (quota line). The badge shows the latest request's electricity grid
  *     (e.g. 🇺🇸 PJM 416), compressing flag → intensity → BA tag as space
@@ -92,6 +96,10 @@ interface NeuralwattConfig {
   // When true, hide energy/quota/MCR display if the active model's provider
   // is not "neuralwatt". Prevents stale display after switching providers.
   hideOnOtherProvider: boolean;
+  // Override for the provider API URL. Every request (chat completions,
+  // /models sync, /quota) goes here instead of api.neuralwatt.com. Use with
+  // a proxy such as Headroom. Default: BASE_URL.
+  baseUrl?: string;
   // Per-model overrides applied ON TOP of patch.json + custom-models.json, keyed
   // by model id. Lets a user override compat flags (e.g. toggle
   // chat_template_kwargs) without editing the extension. Deep-merges `compat`
@@ -114,6 +122,14 @@ function parseDisplayMode(value: unknown, fallback: DisplayMode): DisplayMode {
   return fallback;
 }
 
+// Accept only absolute http(s) URLs; strip trailing slashes so "/quota" style
+// joins never produce double slashes. Anything else falls back to BASE_URL.
+function parseBaseUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const url = value.trim().replace(/\/+$/, "");
+  return /^https?:\/\/.+/.test(url) ? url : undefined;
+}
+
 const DEFAULT_CONFIG: NeuralwattConfig = { energy: "widget", quota: "widget", mcr: "widget", carbon: "widget", hideOnOtherProvider: false };
 
 function loadConfig(): NeuralwattConfig {
@@ -125,6 +141,7 @@ function loadConfig(): NeuralwattConfig {
       mcr: parseDisplayMode(raw.mcr, "widget"),
       carbon: parseDisplayMode(raw.carbon, "widget"),
       hideOnOtherProvider: typeof raw.hideOnOtherProvider === "boolean" ? raw.hideOnOtherProvider : false,
+      baseUrl: parseBaseUrl(raw.baseUrl),
       modelOverrides: parseModelOverrides(raw.modelOverrides),
     };
   } catch {
@@ -356,7 +373,12 @@ export function buildModels(
 
 const PROVIDER_ID = "neuralwatt";
 export const BASE_URL = "https://api.neuralwatt.com/v1";
-const MODELS_URL = `${BASE_URL}/models`;
+
+// The API root for every outbound request. Defaults to api.neuralwatt.com;
+// a baseUrl in ~/.pi/agent/extensions/neuralwatt.json wins (proxy setups).
+function resolveBaseUrl(): string {
+  return config.baseUrl ?? BASE_URL;
+}
 const CACHE_DIR = path.join(getAgentDir(), "cache");
 const CACHE_PATH = path.join(CACHE_DIR, `${PROVIDER_ID}-models.json`);
 const LIVE_FETCH_TIMEOUT_MS = 8000;
@@ -414,7 +436,7 @@ function transformApiModel(apiModel: any): NeuralwattModel | null {
 
 async function fetchLiveModels(apiKey: string, signal?: AbortSignal): Promise<NeuralwattModel[] | null> {
   try {
-    const response = await fetch(MODELS_URL, {
+    const response = await fetch(`${resolveBaseUrl()}/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: signal ? AbortSignal.any([AbortSignal.timeout(LIVE_FETCH_TIMEOUT_MS), signal]) : AbortSignal.timeout(LIVE_FETCH_TIMEOUT_MS),
     });
@@ -736,9 +758,9 @@ function replayEnergyEvents(ctx: any): void {
 // fits within maxCols visible columns, or undefined if nothing meaningful fits.
 //
 // Levels (each progressively more compressed):
-//   ⚡0.77 mWh $0.003829   full: value (spaced unit) + cost
-//   ⚡0.77mWh $0.003829    compressed: value (merged unit) + cost
-//   ⚡0.77mWh              compressed value only (cost dropped)
+//   ⚡5.68 mWh $0.003829   full: value (spaced unit) + cost
+//   ⚡5.68mWh $0.003829    compressed: value (merged unit) + cost
+//   ⚡5.68mWh              compressed value only (cost dropped)
 // Progressive-disclosure energy + MCR text. Returns the highest-fidelity
 // string that fits within maxCols visible columns, or undefined if nothing
 // meaningful fits.
@@ -750,16 +772,16 @@ function replayEnergyEvents(ctx: any): void {
 // Levels (most → least detail), with carbon (🌱 session CO₂) inserted between
 // cost and MCR — carbon is more core than MCR detail, so MCR drops first, then
 // the "CO₂" suffix, then the carbon value (compact), then energy compresses:
-//   ⚡0.77 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5 APC 85% compact 45%
-//   ⚡0.77 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5 APC 85%
-//   ⚡0.77 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5
-//   ⚡0.77 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0
-//   ⚡0.77 mWh $0.003829 🌱1.24 g CO₂
-//   ⚡0.77 mWh $0.003829 🌱1.24 g                          drop "CO₂" suffix
-//   ⚡0.77 mWh $0.003829 🌱1.24g                          compact carbon
-//   ⚡0.77 mWh $0.003829                                 drop carbon
-//   ⚡0.77mWh $0.003829                                 compressed + cost
-//   ⚡0.77mWh                                            compressed only
+//   ⚡5.68 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5 APC 85% compact 45%
+//   ⚡5.68 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5 APC 85%
+//   ⚡5.68 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0 drop<5
+//   ⚡5.68 mWh $0.003829 🌱1.24 g CO₂  MCR 3bb342a0
+//   ⚡5.68 mWh $0.003829 🌱1.24 g CO₂
+//   ⚡5.68 mWh $0.003829 🌱1.24 g                          drop "CO₂" suffix
+//   ⚡5.68 mWh $0.003829 🌱1.24g                          compact carbon
+//   ⚡5.68 mWh $0.003829                                 drop carbon
+//   ⚡5.68mWh $0.003829                                 compressed + cost
+//   ⚡5.68mWh                                            compressed only
 function buildEnergyText(maxCols: number): string | undefined {
   const hasEnergy = sessionEnergyJoules > 0 || sessionCostUsd > 0;
   const hasMCR = config.mcr !== "off" && sessionMcrFp !== null;
@@ -846,13 +868,13 @@ function buildEnergyText(maxCols: number): string | undefined {
   return truncateAnsi(candidates[candidates.length - 1], maxCols);
 }
 
-// Compact energy format: merges value and unit with no space ("0.77mWh" vs "0.77 mWh").
+// Compact energy format: merges value and unit with no space ("5.68mWh" vs "5.68 mWh").
 function formatEnergyCompact(joules: number): string {
   if (joules === 0) return "0J";
   if (joules < 3.6) {
     return `${joules.toFixed(2)}J`;
   }
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) {
     return `${mwh.toFixed(2)}mWh`;
   }
@@ -994,7 +1016,7 @@ let cachedQuota: QuotaResponse | null = null;
 
 async function fetchQuota(apiKey: string, signal?: AbortSignal): Promise<QuotaResponse | null> {
   try {
-    const response = await fetch(`${BASE_URL}/quota`, {
+    const response = await fetch(`${resolveBaseUrl()}/quota`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: signal ? AbortSignal.any([AbortSignal.timeout(LIVE_FETCH_TIMEOUT_MS), signal]) : AbortSignal.timeout(LIVE_FETCH_TIMEOUT_MS),
     });
@@ -1451,7 +1473,7 @@ function formatEnergy(joules: number): string {
   if (joules < 3.6) {
     return `${joules.toFixed(2)} J`;
   }
-  const mwh = joules / 3600;
+  const mwh = joules / 3.6;
   if (mwh < 1000) {
     return `${mwh.toFixed(2)} mWh`;
   }
@@ -1555,7 +1577,7 @@ export function streamNeuralwatt(
   const maxImages = model.vision?.maxImagesPerRequest as number | undefined;
   const transformedContext = transformContextForImageLimit(context, maxImages);
 
-  const neuralwattModel = { ...model, api: "openai-completions", baseUrl: model.baseUrl || BASE_URL };
+  const neuralwattModel = { ...model, api: "openai-completions", baseUrl: model.baseUrl || resolveBaseUrl() };
 
   // pi hands the user's thinking selection to streamSimple providers as
   // `options.reasoning` (a raw ThinkingLevel). The raw streamOpenAICompletions
@@ -1648,7 +1670,7 @@ export function getStaleModels(): NeuralwattModel[] {
 // to ensure the same provider identity (api, streamSimple, headers) everywhere.
 export function makeProviderConfig(models: NeuralwattModel[] = getStaleModels()) {
   return {
-    baseUrl: BASE_URL,
+    baseUrl: resolveBaseUrl(),
     apiKey: "$NEURALWATT_API_KEY",
     api: "neuralwatt" as const,
     models,
