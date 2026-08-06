@@ -210,6 +210,7 @@ The file is auto-populated with defaults on first run.
 | `mcr` | `"widget"`, `"statusbar"`, `"off"` | `"widget"` | MCR (context-reuse) display mode |
 | `carbon` | `"widget"`, `"statusbar"`, `"off"` | `"widget"` | Carbon (session CO₂ + fleet grid/region badge) display mode |
 | `hideOnOtherProvider` | `true`, `false` | `false` | Hide all Neuralwatt display when a non-Neuralwatt model is active |
+| `baseUrl` | Any `http(s)` URL | `https://api.neuralwatt.com/v1` | Override the API URL for all requests (chat, `/models`, `/quota`). For use with a proxy such as Headroom |
 
 **Display modes:**
 
@@ -269,7 +270,7 @@ Neuralwatt provides real-time energy consumption data with every API response. T
 
 | Segment | Meaning |
 |---------|----------|
-| `⚡0.8mWh` | Cumulative session energy consumption (auto-scaled: J → mWh → Wh → kWh) |
+| `⚡5.68mWh` | Cumulative session energy consumption (auto-scaled: J → mWh → Wh → kWh) |
 | `$0.003952` | Cumulative session actual billed cost from Neuralwatt |
 | `🌱1.24 g CO₂` | Cumulative session CO₂ emissions (auto-scaled: mg → g → kg); on the energy line when `carbon` is on |
 | `pro` | Your Neuralwatt subscription plan |
